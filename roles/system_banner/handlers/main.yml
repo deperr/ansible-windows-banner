@@ -1,5 +1,6 @@
 ---
 - name: Restart SystemBanner
   ansible.windows.win_shell: |
-    Get-Process -Name SystemBanner -ErrorAction SilentlyContinue | Stop-Process -Force
+    $procs = Get-Process -Name SystemBanner -ErrorAction SilentlyContinue
+    if ($procs) { $procs | Stop-Process -Force }
   listen: Restart SystemBanner
