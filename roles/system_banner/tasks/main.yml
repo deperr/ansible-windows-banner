@@ -18,6 +18,13 @@
         arguments: /qn
         state: present
 
+    - name: Ensure SystemBanner autostart registry entry
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+        name: SystemBanner
+        data: '"C:\Program Files\SystemBanner\SystemBanner.exe"'
+        type: string
+
     - name: Configure classification level
       ansible.windows.win_regedit:
         path: HKLM:\SOFTWARE\Policies\SystemBanner
