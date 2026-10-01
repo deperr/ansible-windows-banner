@@ -1,0 +1,27 @@
+---
+# Whether to install or remove SystemBanner: present | absent
+system_banner_state: present
+
+# MSI installer version
+system_banner_version: "v1.1.0000"
+
+# MSI source — URL (downloaded to target) or local/UNC path
+system_banner_msi_source: >-
+  https://github.com/awawrzyniak10/SystemBanner/releases/download/{{ system_banner_version }}/SystemBannerSetup-{{ system_banner_version }}.msi
+
+# Classification level
+# Options: UNCLASSIFIED, CUI, CONFIDENTIAL, SECRET, TOP SECRET, TOP SECRET SCI, CUSTOM
+# When set to CUSTOM, the custom text and color settings below are used.
+system_banner_classification: UNCLASSIFIED
+
+# Custom banner text (only used when classification is CUSTOM)
+system_banner_custom_text: ""
+
+# Banner position: top | top_and_bottom
+system_banner_position: top
+
+# Custom background color as hex (only used when classification is CUSTOM)
+system_banner_bg_color: "#007A33"
+
+# Custom foreground/text color as hex (only used when classification is CUSTOM)
+system_banner_fg_color: "#FFFFFF"

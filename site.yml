@@ -1,0 +1,7 @@
+---
+- name: Deploy Microsoft SystemBanner
+  hosts: all
+  gather_facts: true
+
+  roles:
+    - system_banner

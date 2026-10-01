@@ -1,0 +1,135 @@
+---
+- name: Install and configure SystemBanner
+  when: system_banner_state == 'present'
+  block:
+    - name: Download SystemBanner MSI installer
+      ansible.windows.win_get_url:
+        url: "{{ system_banner_msi_source }}"
+        dest: "{{ ansible_env.TEMP }}\\SystemBannerSetup.msi"
+        force: false
+      when: system_banner_msi_source is match('^https?://')
+
+    - name: Install SystemBanner MSI
+      ansible.windows.win_package:
+        path: >-
+          {{ ansible_env.TEMP ~ '\\SystemBannerSetup.msi'
+             if system_banner_msi_source is match('^https?://')
+             else system_banner_msi_source }}
+        arguments: /qn
+        state: present
+
+    - name: Configure classification level
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\SystemBanner
+        name: Simple
+        data: "{{ _sb_classification_map[system_banner_classification] | default(0) }}"
+        type: dword
+      vars:
+        _sb_classification_map:
+          UNCLASSIFIED: 1
+          CUI: 2
+          CONFIDENTIAL: 3
+          SECRET: 4
+          TOP SECRET: 5
+          TOP SECRET SCI: 6
+          CUSTOM: 0
+      notify: Restart SystemBanner
+
+    - name: Configure custom banner text
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\SystemBanner
+        name: Text
+        data: "{{ system_banner_custom_text }}"
+        type: string
+      when:
+        - system_banner_classification == 'CUSTOM'
+        - system_banner_custom_text | length > 0
+      notify: Restart SystemBanner
+
+    - name: Configure custom background color
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\SystemBanner
+        name: "{{ item.name }}"
+        data: "{{ item.value }}"
+        type: dword
+      loop:
+        - name: "0"
+          value: "{{ _sb_bg[:2] | int(base=16) }}"
+        - name: "1"
+          value: "{{ _sb_bg[2:4] | int(base=16) }}"
+        - name: "2"
+          value: "{{ _sb_bg[4:6] | int(base=16) }}"
+      vars:
+        _sb_bg: "{{ system_banner_bg_color | replace('#', '') }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: system_banner_classification == 'CUSTOM'
+      notify: Restart SystemBanner
+
+    - name: Configure custom foreground color
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\SystemBanner
+        name: "{{ item.name }}"
+        data: "{{ item.value }}"
+        type: dword
+      loop:
+        - name: "3"
+          value: "{{ _sb_fg[:2] | int(base=16) }}"
+        - name: "4"
+          value: "{{ _sb_fg[2:4] | int(base=16) }}"
+        - name: "5"
+          value: "{{ _sb_fg[4:6] | int(base=16) }}"
+      vars:
+        _sb_fg: "{{ system_banner_fg_color | replace('#', '') }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: system_banner_classification == 'CUSTOM'
+      notify: Restart SystemBanner
+
+    - name: Configure banner position
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\SystemBanner
+        name: TopAndBottom
+        data: "{{ (system_banner_position == 'top_and_bottom') | ternary(1, 0) }}"
+        type: dword
+      notify: Restart SystemBanner
+
+- name: Remove SystemBanner
+  when: system_banner_state == 'absent'
+  block:
+    - name: Stop SystemBanner process
+      ansible.windows.win_shell: |
+        $proc = Get-Process -Name SystemBanner -ErrorAction SilentlyContinue
+        if ($proc) {
+          $proc | Stop-Process -Force
+          Write-Output "stopped"
+        } else {
+          Write-Output "not_running"
+        }
+      register: _sb_stop
+      changed_when: "'stopped' in _sb_stop.stdout"
+
+    - name: Uninstall SystemBanner MSI
+      ansible.windows.win_shell: |
+        $paths = @(
+          "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
+          "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
+        )
+        $app = Get-ItemProperty $paths -ErrorAction SilentlyContinue |
+          Where-Object { $_.DisplayName -match 'SystemBanner' } |
+          Select-Object -First 1
+        if ($app) {
+          $id = $app.PSChildName
+          Start-Process msiexec.exe -ArgumentList "/x `"$id`" /qn /norestart" -Wait -NoNewWindow
+          Write-Output "uninstalled"
+        } else {
+          Write-Output "not_installed"
+        }
+      register: _sb_uninstall
+      changed_when: "'uninstalled' in _sb_uninstall.stdout"
+
+    - name: Remove SystemBanner policy registry keys
+      ansible.windows.win_regedit:
+        path: HKLM:\SOFTWARE\Policies\SystemBanner
+        state: absent
+        delete_key: true

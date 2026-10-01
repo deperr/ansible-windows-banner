@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Dennis Perrone
+  description: Install and configure Microsoft SystemBanner for Windows
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Windows
+      versions:
+        - "2016"
+        - "2019"
+        - "2022"
+        - "2025"
+        - "10"
+        - "11"
+  galaxy_tags:
+    - windows
+    - security
+    - banner
+    - classification
+dependencies: []
