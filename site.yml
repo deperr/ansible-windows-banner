@@ -1,6 +1,6 @@
 ---
 - name: Deploy Microsoft SystemBanner
-  hosts: all
+  hosts: "{{ _hosts | default(omit) }}"
   gather_facts: true
 
   roles:
